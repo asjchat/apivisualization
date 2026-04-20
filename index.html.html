@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>API Cost Savings Model — Nexar / Octopart</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --c-bg: #f7f6f3;
+    --c-surface: #ffffff;
+    --c-border: rgba(0,0,0,0.08);
+    --c-border-strong: rgba(0,0,0,0.15);
+    --c-text: #1a1a1a;
+    --c-text-2: #555;
+    --c-text-3: #888;
+    --c-teal: #0f6e56;
+    --c-teal-light: #e1f5ee;
+    --c-teal-mid: #1d9e75;
+    --c-coral: #d85a30;
+    --c-coral-light: #faece7;
+    --c-amber: #ba7517;
+    --c-amber-light: #faeeda;
+    --c-blue: #185fa5;
+    --c-blue-light: #e6f1fb;
+    --c-purple: #534ab7;
+    --c-purple-light: #eeedfe;
+    --c-green: #3b6d11;
+    --c-green-light: #eaf3de;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.07);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --c-bg: #111;
+      --c-surface: #1c1c1c;
+      --c-border: rgba(255,255,255,0.08);
+      --c-border-strong: rgba(255,255,255,0.15);
+      --c-text: #eee;
+      --c-text-2: #aaa;
+      --c-text-3: #666;
+      --c-teal-light: #04342c;
+      --c-coral-light: #4a1b0c;
+      --c-amber-light: #412402;
+      --c-blue-light: #042c53;
+      --c-purple-light: #26215c;
+      --c-green-light: #173404;
+    }
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--c-bg); color: var(--c-text); font-size: 14px; line-height: 1.6; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  .header { margin-bottom: 36px; }
+  .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .brand { font-size: 11px; letter-spacing: 0.1em; color: var(--c-teal); font-weight: 500; text-transform: uppercase; margin-bottom: 6px; }
+  h1 { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--c-text); font-weight: 400; line-height: 1.2; }
+  .subtitle { font-size: 13px; color: var(--c-text-2); margin-top: 6px; }
+  .btn-pdf { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--radius-sm); border: 1px solid var(--c-border-strong); background: var(--c-surface); color: var(--c-text); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+  .btn-pdf:hover { background: var(--c-bg); }
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--c-surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .panel-head { padding: 16px 20px 12px; border-bottom: 0.5px solid var(--c-border); }
+  .panel-head h2 { font-size: 13px; font-weight: 500; color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .panel-body { padding: 18px 20px; }
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 12px; color: var(--c-text-2); margin-bottom: 6px; font-weight: 500; }
+  .plan-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 0.5px solid var(--c-border-strong); border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 18px; }
+  .plan-btn { padding: 9px 0; text-align: center; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--c-text-2); transition: all 0.15s; }
+  .plan-btn.active { background: var(--c-teal); color: #fff; }
+  input[type=range] { width: 100%; accent-color: var(--c-teal); height: 4px; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-val { font-size: 13px; font-weight: 500; min-width: 64px; text-align: right; color: var(--c-text); }
+  .feature-list { display: flex; flex-direction: column; gap: 8px; }
+  .feature-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); border: 0.5px solid var(--c-border); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .feature-item.on { background: var(--c-teal-light); border-color: var(--c-teal-mid); }
+  .feature-item.pro-only { opacity: 0.45; cursor: not-allowed; }
+  .feature-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--c-border-strong); background: var(--c-surface); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .feature-item.on .feature-check { background: var(--c-teal); border-color: var(--c-teal); }
+  .checkmark { width: 10px; height: 10px; display: none; }
+  .feature-item.on .checkmark { display: block; fill: white; }
+  .feature-name { font-size: 13px; font-weight: 500; color: var(--c-text); flex: 1; }
+  .feature-meta { font-size: 11px; color: var(--c-text-3); }
+  .feature-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--c-purple-light); color: var(--c-purple); font-weight: 500; }
+  .sep { height: 0.5px; background: var(--c-border); margin: 16px 0; }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+  .kpi { background: var(--c-surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .kpi-label { font-size: 11px; color: var(--c-text-2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .kpi-value { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--c-text); line-height: 1.1; }
+  .kpi-sub { font-size: 12px; color: var(--c-text-3); margin-top: 3px; }
+  .kpi.accent { background: var(--c-teal); }
+  .kpi.accent .kpi-label { color: rgba(255,255,255,0.7); }
+  .kpi.accent .kpi-value { color: #fff; }
+  .kpi.accent .kpi-sub { color: rgba(255,255,255,0.6); }
+  .sensitivity-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .sens-card { border-radius: var(--radius-sm); padding: 14px 16px; border: 0.5px solid var(--c-border); background: var(--c-surface); }
+  .sens-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .sens-value { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 2px; }
+  .sens-sub { font-size: 11px; color: var(--c-text-3); }
+  .sens-card.low .sens-label { color: var(--c-coral); }
+  .sens-card.low .sens-value { color: var(--c-coral); }
+  .sens-card.med .sens-label { color: var(--c-amber); }
+  .sens-card.med .sens-value { color: var(--c-amber); }
+  .sens-card.high .sens-label { color: var(--c-teal); }
+  .sens-card.high .sens-value { color: var(--c-teal); }
+  .breakdown-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .breakdown-table th { text-align: left; font-size: 11px; font-weight: 500; color: var(--c-text-2); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 8px 8px; border-bottom: 0.5px solid var(--c-border); }
+  .breakdown-table td { padding: 8px 8px; border-bottom: 0.5px solid var(--c-border); color: var(--c-text); }
+  .breakdown-table td:last-child { text-align: right; font-weight: 500; }
+  .breakdown-table tr:last-child td { border-bottom: none; font-weight: 500; font-size: 14px; }
+  .breakdown-table .pos { color: var(--c-teal); }
+  .breakdown-table .neg { color: var(--c-coral); }
+  .breakdown-table .total-row td { border-top: 1px solid var(--c-border-strong); padding-top: 10px; }
+  .chart-wrap { position: relative; width: 100%; height: 260px; }
+  .note { font-size: 11px; color: var(--c-text-3); margin-top: 10px; }
+  .disclaimer { margin-top: 32px; padding: 14px 18px; background: var(--c-surface); border-radius: var(--radius); border: 0.5px solid var(--c-border); font-size: 11px; color: var(--c-text-3); line-height: 1.7; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; vertical-align: middle; }
+  .tag-std { background: var(--c-blue-light); color: var(--c-blue); }
+  .tag-pro { background: var(--c-purple-light); color: var(--c-purple); }
+
+  @media print {
+    body { background: white; color: black; }
+    .btn-pdf { display: none; }
+    .panel, .kpi, .sens-card { box-shadow: none; border: 0.5px solid #ccc !important; }
+    .layout { grid-template-columns: 300px 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page" id="main-page">
+
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="brand">Nexar / Octopart</div>
+        <h1>API Cost Savings Model</h1>
+        <div class="subtitle">Configure your usage profile to see projected annual savings</div>
+      </div>
+      <button class="btn-pdf" onclick="printPage()">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4V2h8v2M2 6h12v7H2V6z"/><path d="M5 13v-3h6v3"/></svg>
+        Save as PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: Inputs -->
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+
+      <!-- Plan selector -->
+      <div class="panel">
+        <div class="panel-head"><h2>Plan selection</h2></div>
+        <div class="panel-body">
+          <div class="plan-toggle">
+            <button class="plan-btn active" id="btn-std" onclick="setPlan('standard')">Standard — $100/mo</button>
+            <button class="plan-btn" id="btn-pro" onclick="setPlan('pro')">Pro — $500/mo</button>
+          </div>
+          <div class="field">
+            <label>Parts looked up / month</label>
+            <div class="slider-row">
+              <input type="range" id="sl-parts" min="100" max="20000" step="100" value="500" oninput="update()" />
+              <span class="slider-val" id="lbl-parts">500</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Quote requests / week</label>
+            <div class="slider-row">
+              <input type="range" id="sl-quotes" min="1" max="200" step="1" value="20" oninput="update()" />
+              <span class="slider-val" id="lbl-quotes">20</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Avg parts per quote</label>
+            <div class="slider-row">
+              <input type="range" id="sl-parts-per-quote" min="1" max="100" step="1" value="10" oninput="update()" />
+              <span class="slider-val" id="lbl-ppq">10</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Operations inputs -->
+      <div class="panel">
+        <div class="panel-head"><h2>Operations inputs</h2></div>
+        <div class="panel-body">
+          <div class="field">
+            <label>Quoter hours / week (total team)</label>
+            <div class="slider-row">
+              <input type="range" id="sl-hours" min="10" max="200" step="5" value="40" oninput="update()" />
+              <span class="slider-val" id="lbl-hours">40 hrs</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>% time on part pricing lookup</label>
+            <div class="slider-row">
+              <input type="range" id="sl-pct" min="5" max="80" step="5" value="20" oninput="update()" />
+              <span class="slider-val" id="lbl-pct">20%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Hourly quoter cost — fully loaded ($)</label>
+            <div class="slider-row">
+              <input type="range" id="sl-hourly" min="15" max="100" step="1" value="30" oninput="update()" />
+              <span class="slider-val" id="lbl-hourly">$30</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Avg customer annual revenue value ($)</label>
+            <div class="slider-row">
+              <input type="range" id="sl-cval" min="1000" max="150000" step="1000" value="15000" oninput="update()" />
+              <span class="slider-val" id="lbl-cval">$15,000</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Customers retained / year (speed benefit)</label>
+            <div class="slider-row">
+              <input type="range" id="sl-retained" min="0" max="20" step="1" value="1" oninput="update()" />
+              <span class="slider-val" id="lbl-retained">1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pro features -->
+      <div class="panel" id="features-panel">
+        <div class="panel-head"><h2>Pro add-on features <span class="tag tag-pro">Pro only</span></h2></div>
+        <div class="panel-body">
+          <div style="font-size: 12px; color: var(--c-text-2); margin-bottom: 12px;">Each active feature adds $200/month. Toggle to include in savings calculation.</div>
+          <div class="feature-list">
+            <div class="feature-item on" id="f-leadtime" onclick="toggleFeature('leadtime')">
+              <div class="feature-check">
+                <svg class="checkmark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="feature-name">Lead time</div>
+                <div class="feature-meta">0.4 min saved / part</div>
+              </div>
+            </div>
+            <div class="feature-item on" id="f-lifecycle" onclick="toggleFeature('lifecycle')">
+              <div class="feature-check">
+                <svg class="checkmark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="feature-name">Lifecycle status</div>
+                <div class="feature-meta">0.3 min saved / part</div>
+              </div>
+            </div>
+            <div class="feature-item on" id="f-datasheets" onclick="toggleFeature('datasheets')">
+              <div class="feature-check">
+                <svg class="checkmark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="feature-name">Datasheets</div>
+                <div class="feature-meta">0.75 min saved / part</div>
+              </div>
+            </div>
+            <div class="feature-item on" id="f-techspecs" onclick="toggleFeature('techspecs')">
+              <div class="feature-check">
+                <svg class="checkmark" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="feature-name">Tech specs</div>
+                <div class="feature-meta">1.0 min saved / part</div>
+              </div>
+            </div>
+            <div class="feature-item pro-only">
+              <div class="feature-check"></div>
+              <div>
+                <div class="feature-name" style="color: var(--c-text-3);">ECAD modules</div>
+                <div class="feature-meta">Not available on either plan</div>
+              </div>
+            </div>
+            <div class="feature-item pro-only">
+              <div class="feature-check"></div>
+              <div>
+                <div class="feature-name" style="color: var(--c-text-3);">Similar parts</div>
+                <div class="feature-meta">Not available on either plan</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Outputs -->
+    <div class="right-col">
+
+      <!-- KPI cards -->
+      <div class="kpi-grid">
+        <div class="kpi accent">
+          <div class="kpi-label">Net annual savings</div>
+          <div class="kpi-value" id="kpi-net">—</div>
+          <div class="kpi-sub" id="kpi-plan-label">Loading…</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">ROI on investment</div>
+          <div class="kpi-value" id="kpi-roi">—</div>
+          <div class="kpi-sub">return on API cost</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Payback period</div>
+          <div class="kpi-value" id="kpi-payback">—</div>
+          <div class="kpi-sub">months to break even</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Labor saved / year</div>
+          <div class="kpi-value" id="kpi-labor">—</div>
+          <div class="kpi-sub">automation + features</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Revenue retained</div>
+          <div class="kpi-value" id="kpi-rev">—</div>
+          <div class="kpi-sub">faster quoting benefit</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Annual API cost</div>
+          <div class="kpi-value" id="kpi-cost">—</div>
+          <div class="kpi-sub">base + active add-ons</div>
+        </div>
+      </div>
+
+      <!-- Sensitivity analysis -->
+      <div class="panel">
+        <div class="panel-head"><h2>Sensitivity analysis</h2></div>
+        <div class="panel-body">
+          <div style="font-size: 12px; color: var(--c-text-2); margin-bottom: 14px;">Net annual savings at conservative (–30%), base, and optimistic (+30%) assumptions.</div>
+          <div class="sensitivity-grid">
+            <div class="sens-card low">
+              <div class="sens-label">Low impact</div>
+              <div class="sens-value" id="sens-low">—</div>
+              <div class="sens-sub">–30% on savings drivers</div>
+            </div>
+            <div class="sens-card med">
+              <div class="sens-label">Base case</div>
+              <div class="sens-value" id="sens-med">—</div>
+              <div class="sens-sub">your current inputs</div>
+            </div>
+            <div class="sens-card high">
+              <div class="sens-label">High impact</div>
+              <div class="sens-value" id="sens-high">—</div>
+              <div class="sens-sub">+30% on savings drivers</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Savings breakdown -->
+      <div class="panel">
+        <div class="panel-head"><h2>Annual savings breakdown</h2></div>
+        <div class="panel-body">
+          <table class="breakdown-table">
+            <thead>
+              <tr><th>Component</th><th style="text-align:right">Annual value</th></tr>
+            </thead>
+            <tbody id="breakdown-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="panel">
+        <div class="panel-head"><h2>Savings composition</h2></div>
+        <div class="panel-body">
+          <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; font-size: 12px; color: var(--c-text-2);" id="chart-legend"></div>
+          <div class="chart-wrap">
+            <canvas id="savingsChart" role="img" aria-label="Bar chart showing annual savings components vs API cost"></canvas>
+          </div>
+          <p class="note">Bar chart shows gross savings components vs. total annual API cost. Net savings = gross − cost.</p>
+        </div>
+      </div>
+
+      <!-- Standard vs Pro comparison (when on Standard) -->
+      <div class="panel" id="comparison-panel">
+        <div class="panel-head"><h2>Plan comparison</h2></div>
+        <div class="panel-body">
+          <table class="breakdown-table">
+            <thead>
+              <tr><th>Metric</th><th style="text-align:right" class="tag-std">Standard</th><th style="text-align:right" class="tag-pro">Pro</th></tr>
+            </thead>
+            <tbody id="comparison-body"></tbody>
+          </table>
+          <p class="note" id="comparison-note"></p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Model assumptions:</strong> Labor savings use 2 min/part manual lookup vs. 0.25 min/part API. Annual figures use 50 operating weeks. Pro add-on features use Nexar benchmark time savings per part. Revenue retention impact assumes each retained customer generates the configured annual customer value. Sensitivity analysis applies a uniform ±30% multiplier to all gross savings drivers while holding costs fixed. This model is illustrative; actual results will vary by use case.
+  </div>
+
+</div>
+
+<script>
+let plan = 'standard';
+const features = { leadtime: true, lifecycle: true, datasheets: true, techspecs: true };
+const featureMins = { leadtime: 0.4, lifecycle: 0.3, datasheets: 0.75, techspecs: 1.0 };
+const featureCost = 200; // per month per feature
+let chart = null;
+
+function setPlan(p) {
+  plan = p;
+  document.getElementById('btn-std').classList.toggle('active', p === 'standard');
+  document.getElementById('btn-pro').classList.toggle('active', p === 'pro');
+  const fp = document.getElementById('features-panel');
+  fp.style.opacity = p === 'pro' ? '1' : '0.5';
+  fp.style.pointerEvents = p === 'pro' ? 'auto' : 'none';
+  update();
+}
+
+function toggleFeature(key) {
+  if (plan !== 'pro') return;
+  features[key] = !features[key];
+  const el = document.getElementById('f-' + key);
+  el.classList.toggle('on', features[key]);
+  update();
+}
+
+function fmt(n) {
+  if (Math.abs(n) >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1000) return '$' + Math.round(n).toLocaleString();
+  return '$' + Math.round(n).toLocaleString();
+}
+
+function calc(multiplier = 1) {
+  const partsMonth = parseInt(document.getElementById('sl-parts').value);
+  const quotesWeek = parseInt(document.getElementById('sl-quotes').value);
+  const ppq = parseInt(document.getElementById('sl-parts-per-quote').value);
+  const totalHrs = parseInt(document.getElementById('sl-hours').value);
+  const pct = parseInt(document.getElementById('sl-pct').value) / 100;
+  const hourly = parseInt(document.getElementById('sl-hourly').value);
+  const cval = parseInt(document.getElementById('sl-cval').value);
+  const retained = parseInt(document.getElementById('sl-retained').value);
+
+  const weeks = 50;
+  const partsWeek = quotesWeek * ppq;
+  const manualMins = 2;
+  const apiMins = 0.25;
+  const hrsSavedWeek = (partsWeek * (manualMins - apiMins)) / 60;
+  const baseLabor = hrsSavedWeek * weeks * hourly * multiplier;
+  const revenueRetained = retained * cval * multiplier;
+
+  let baseSub = plan === 'standard' ? 100 : 500;
+  const stdIncluded = 2000;
+  const proIncluded = 15000;
+  const stdRate = 0.05;
+  const proRate = 0.033;
+  const included = plan === 'standard' ? stdIncluded : proIncluded;
+  const rate = plan === 'standard' ? stdRate : proRate;
+  const overage = Math.max(0, partsMonth - included) * rate;
+  const monthlyBase = baseSub + overage;
+  const annualBase = monthlyBase * 12;
+
+  let featureLabor = 0;
+  let activeFeatureCount = 0;
+  const featureRows = [];
+
+  if (plan === 'pro') {
+    for (const [key, on] of Object.entries(features)) {
+      if (on) {
+        const mins = featureMins[key];
+        const annualSavings = (partsWeek * mins / 60) * weeks * hourly * multiplier;
+        featureLabor += annualSavings;
+        activeFeatureCount++;
+        featureRows.push({ name: key.replace('techspecs','tech specs').replace('datasheets','datasheets').replace('lifecycle','lifecycle status').replace('leadtime','lead time'), value: annualSavings });
+      }
+    }
+  }
+
+  const annualAddons = activeFeatureCount * featureCost * 12;
+  const totalCost = annualBase + annualAddons;
+  const totalGross = baseLabor + revenueRetained + featureLabor;
+  const net = totalGross - totalCost;
+  const roi = totalCost > 0 ? net / totalCost : 0;
+  const payback = net > 0 ? (totalCost / (totalGross / 12)) : 0;
+
+  return {
+    partsMonth, partsWeek, hrsSavedWeek, baseLabor, revenueRetained,
+    featureLabor, featureRows, annualBase, annualAddons, totalCost,
+    totalGross, net, roi, payback, activeFeatureCount
+  };
+}
+
+function update() {
+  const v = parseInt(document.getElementById('sl-parts').value);
+  document.getElementById('lbl-parts').textContent = v.toLocaleString();
+  document.getElementById('lbl-quotes').textContent = document.getElementById('sl-quotes').value;
+  document.getElementById('lbl-ppq').textContent = document.getElementById('sl-parts-per-quote').value;
+  const hrs = document.getElementById('sl-hours').value;
+  document.getElementById('lbl-hours').textContent = hrs + ' hrs';
+  document.getElementById('lbl-pct').textContent = document.getElementById('sl-pct').value + '%';
+  document.getElementById('lbl-hourly').textContent = '$' + document.getElementById('sl-hourly').value;
+  const cval = parseInt(document.getElementById('sl-cval').value);
+  document.getElementById('lbl-cval').textContent = '$' + cval.toLocaleString();
+  document.getElementById('lbl-retained').textContent = document.getElementById('sl-retained').value;
+
+  const r = calc(1);
+  const rLow = calc(0.7);
+  const rHigh = calc(1.3);
+
+  document.getElementById('kpi-net').textContent = fmt(r.net);
+  document.getElementById('kpi-plan-label').textContent = plan === 'pro' ? 'Pro plan total' : 'Standard plan total';
+  document.getElementById('kpi-roi').textContent = (r.roi * 100).toFixed(0) + '%';
+  document.getElementById('kpi-payback').textContent = r.payback > 0 ? r.payback.toFixed(1) : '–';
+  document.getElementById('kpi-labor').textContent = fmt(r.baseLabor + r.featureLabor);
+  document.getElementById('kpi-rev').textContent = fmt(r.revenueRetained);
+  document.getElementById('kpi-cost').textContent = fmt(r.totalCost);
+
+  document.getElementById('sens-low').textContent = fmt(rLow.net);
+  document.getElementById('sens-med').textContent = fmt(r.net);
+  document.getElementById('sens-high').textContent = fmt(rHigh.net);
+
+  // Breakdown table
+  const tbody = document.getElementById('breakdown-body');
+  const rows = [
+    { name: 'Base API — labor savings (automation)', val: r.baseLabor, cls: 'pos' },
+    { name: 'Revenue retained — faster quoting', val: r.revenueRetained, cls: 'pos' },
+  ];
+  for (const fr of r.featureRows) {
+    rows.push({ name: fr.name.charAt(0).toUpperCase() + fr.name.slice(1) + ' — labor savings', val: fr.value, cls: 'pos' });
+  }
+  rows.push({ name: 'Total annual API cost (base + add-ons)', val: -r.totalCost, cls: 'neg', bold: true });
+  rows.push({ name: 'Net annual savings', val: r.net, cls: r.net >= 0 ? 'pos' : 'neg', total: true });
+
+  tbody.innerHTML = rows.map((row, i) => `
+    <tr class="${row.total ? 'total-row' : ''}">
+      <td style="${row.total ? 'font-weight:500' : ''}">${row.name}</td>
+      <td class="${row.cls}" style="${row.total ? 'font-size:15px' : ''}">${fmt(Math.abs(row.val))}${row.val < 0 ? ' (cost)' : ''}</td>
+    </tr>
+  `).join('');
+
+  // Chart
+  const labels = ['Labor (automation)', 'Revenue retained'];
+  const dataVals = [r.baseLabor, r.revenueRetained];
+  const colors = ['#0f6e56', '#185fa5'];
+
+  for (const fr of r.featureRows) {
+    labels.push(fr.name.charAt(0).toUpperCase() + fr.name.slice(1));
+    dataVals.push(fr.value);
+    colors.push('#534ab7');
+  }
+  labels.push('API cost (total)');
+  dataVals.push(r.totalCost);
+  colors.push('#d85a30');
+
+  const legendEl = document.getElementById('chart-legend');
+  const legendItems = [
+    { color: '#0f6e56', label: 'Labor savings' },
+    { color: '#185fa5', label: 'Revenue retained' },
+    { color: '#534ab7', label: 'Feature savings' },
+    { color: '#d85a30', label: 'API cost' },
+  ];
+  legendEl.innerHTML = legendItems.map(l => `
+    <span style="display:flex;align-items:center;gap:5px;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${l.color};display:inline-block;flex-shrink:0;"></span>
+      ${l.label}
+    </span>
+  `).join('');
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('savingsChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: dataVals,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: {
+          label: ctx => ' ' + fmt(ctx.parsed.y)
+        }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#888', font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: {
+            color: '#888', font: { size: 11 },
+            callback: v => v >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + v
+          }
+        }
+      }
+    }
+  });
+
+  // Comparison panel
+  const rStd = calcForPlan('standard');
+  const rPro = calcForPlan('pro');
+  const cmpBody = document.getElementById('comparison-body');
+  const cmpRows = [
+    { label: 'Monthly base cost', std: fmt(rStd.monthlyBase), pro: fmt(rPro.monthlyBase) },
+    { label: 'Annual API cost', std: fmt(rStd.totalCost), pro: fmt(rPro.totalCost) },
+    { label: 'Labor savings (automation)', std: fmt(rStd.baseLabor), pro: fmt(rPro.baseLabor) },
+    { label: 'Feature add-on savings', std: '—', pro: fmt(rPro.featureLabor) },
+    { label: 'Revenue retained', std: fmt(rStd.revenueRetained), pro: fmt(rPro.revenueRetained) },
+    { label: 'Net annual savings', std: fmt(rStd.net), pro: fmt(rPro.net), highlight: true },
+    { label: 'ROI', std: (rStd.roi * 100).toFixed(0) + '%', pro: (rPro.roi * 100).toFixed(0) + '%', highlight: true },
+  ];
+  cmpBody.innerHTML = cmpRows.map(row => `
+    <tr>
+      <td style="${row.highlight ? 'font-weight:500' : ''}">${row.label}</td>
+      <td style="text-align:right; ${row.highlight ? 'font-weight:500' : ''}">${row.std}</td>
+      <td style="text-align:right; color: var(--c-teal); ${row.highlight ? 'font-weight:500' : ''}">${row.pro}</td>
+    </tr>
+  `).join('');
+  const diff = rPro.net - rStd.net;
+  document.getElementById('comparison-note').textContent = diff >= 0
+    ? `Pro plan generates ${fmt(diff)} more net value annually vs. Standard (with all active add-ons).`
+    : `Standard plan generates ${fmt(Math.abs(diff))} more net value annually than Pro with current inputs.`;
+}
+
+function calcForPlan(p) {
+  const partsMonth = parseInt(document.getElementById('sl-parts').value);
+  const quotesWeek = parseInt(document.getElementById('sl-quotes').value);
+  const ppq = parseInt(document.getElementById('sl-parts-per-quote').value);
+  const hourly = parseInt(document.getElementById('sl-hourly').value);
+  const cval = parseInt(document.getElementById('sl-cval').value);
+  const retained = parseInt(document.getElementById('sl-retained').value);
+  const weeks = 50;
+  const partsWeek = quotesWeek * ppq;
+  const hrsSavedWeek = (partsWeek * (2 - 0.25)) / 60;
+  const baseLabor = hrsSavedWeek * weeks * hourly;
+  const revenueRetained = retained * cval;
+  const sub = p === 'standard' ? 100 : 500;
+  const included = p === 'standard' ? 2000 : 15000;
+  const rate = p === 'standard' ? 0.05 : 0.033;
+  const overage = Math.max(0, partsMonth - included) * rate;
+  const monthlyBase = sub + overage;
+  const annualBase = monthlyBase * 12;
+  let featureLabor = 0;
+  let activeFeatureCount = 0;
+  if (p === 'pro') {
+    for (const [key, on] of Object.entries(features)) {
+      if (on) {
+        featureLabor += (partsWeek * featureMins[key] / 60) * weeks * hourly;
+        activeFeatureCount++;
+      }
+    }
+  }
+  const annualAddons = activeFeatureCount * featureCost * 12;
+  const totalCost = annualBase + annualAddons;
+  const totalGross = baseLabor + revenueRetained + featureLabor;
+  const net = totalGross - totalCost;
+  const roi = totalCost > 0 ? net / totalCost : 0;
+  return { monthlyBase, annualBase, annualAddons, totalCost, baseLabor, featureLabor, revenueRetained, net, roi };
+}
+
+function printPage() {
+  window.print();
+}
+
+update();
+</script>
+</body>
+</html>
